@@ -534,8 +534,15 @@
     </div>
 
     <script>
-        // Verify marked library loaded
-        console.log("marked available:", typeof marked, "marked.parse:", typeof marked?.parse);
+        // Resolve the marked parse function from whichever way the UMD exposes it
+        const renderMarkdown = (function() {
+            if (typeof marked === "function") return marked;
+            if (typeof marked === "object" && typeof marked.parse === "function") return marked.parse;
+            if (typeof marked === "object" && typeof marked.marked === "function") return marked.marked;
+            console.error("marked library not found — markdown will render as plain text");
+            return function(text) { return text; };
+        })();
+        console.log("renderMarkdown ready:", typeof renderMarkdown);
 
         const chatEl = document.getElementById("chat");
         const questionEl = document.getElementById("question");
@@ -698,13 +705,7 @@
 
             if (role === "assistant") {
                 // Render markdown for assistant messages
-                try {
-                    const parsed = marked.parse(text);
-                    content.innerHTML = parsed;
-                } catch (e) {
-                    console.error("marked.parse failed:", e);
-                    content.textContent = text;
-                }
+                content.innerHTML = renderMarkdown(text);
             } else {
                 content.textContent = text;
             }
