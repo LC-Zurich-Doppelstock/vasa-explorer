@@ -20,6 +20,62 @@ import scipy
 import seaborn as sns
 from fastapi import FastAPI
 
+# ---------------------------------------------------------------------------
+# Dark theme for plots — matches the app's dark UI (#141416 background)
+# ---------------------------------------------------------------------------
+_BRIGHT_TEXT = "#d4d4d8"
+_DIM_TEXT = "#a1a1aa"
+_GRID_COLOR = "#2e2e33"
+_ACCENT_PALETTE = [
+    "#fb923c",  # orange (primary accent)
+    "#34d399",  # emerald
+    "#60a5fa",  # blue
+    "#f472b6",  # pink
+    "#a78bfa",  # violet
+    "#facc15",  # yellow
+    "#2dd4bf",  # teal
+    "#f87171",  # red
+    "#c084fc",  # purple
+    "#38bdf8",  # sky
+]
+
+plt.rcParams.update(
+    {
+        # Transparent figure & axes
+        "figure.facecolor": "none",
+        "axes.facecolor": "none",
+        "savefig.facecolor": "none",
+        # Text
+        "text.color": _BRIGHT_TEXT,
+        "axes.labelcolor": _BRIGHT_TEXT,
+        "xtick.color": _DIM_TEXT,
+        "ytick.color": _DIM_TEXT,
+        # Spines
+        "axes.edgecolor": _GRID_COLOR,
+        # Grid
+        "axes.grid": True,
+        "grid.color": _GRID_COLOR,
+        "grid.alpha": 0.6,
+        "grid.linewidth": 0.5,
+        # Color cycle
+        "axes.prop_cycle": plt.cycler(color=_ACCENT_PALETTE),
+        # Legend
+        "legend.facecolor": "none",
+        "legend.edgecolor": _GRID_COLOR,
+        "legend.labelcolor": _BRIGHT_TEXT,
+        # Figure size
+        "figure.figsize": (10, 5),
+        "figure.dpi": 150,
+        # Font sizes
+        "font.size": 11,
+        "axes.titlesize": 14,
+        "axes.titleweight": "bold",
+        "axes.labelsize": 12,
+    }
+)
+
+sns.set_palette(_ACCENT_PALETTE)
+
 app = FastAPI(title="Vasaloppet Code Executor")
 
 # ---------------------------------------------------------------------------
@@ -91,7 +147,9 @@ def execute(payload: dict):
         # Check if any figure was created
         if plt.get_fignums():
             plt.tight_layout()
-            plt.savefig(fig_buf, format="png", dpi=150, bbox_inches="tight")
+            plt.savefig(
+                fig_buf, format="png", dpi=150, bbox_inches="tight", transparent=True
+            )
             fig_buf.seek(0)
             image_b64 = base64.b64encode(fig_buf.read()).decode("utf-8")
             plt.close("all")

@@ -44,6 +44,14 @@ for _prov, _env in [("anthropic", "ANTHROPIC_API_KEY"), ("openai", "OPENAI_API_K
 # Sentinel value the frontend sends to indicate "use the server key".
 SERVER_KEY_SENTINEL = "__server__"
 
+# Optional default model override (e.g. DEFAULT_MODEL=claude-sonnet-4-20250514).
+# When unset, falls back to a sensible default per provider.
+_PROVIDER_MODEL_DEFAULTS = {
+    "anthropic": "claude-sonnet-4-6",
+    "openai": "gpt-4o",
+}
+DEFAULT_MODEL = os.environ.get("DEFAULT_MODEL", "").strip()
+
 
 def resolve_api_key(provider_name: str, request_key: str) -> str:
     """Return the actual API key to use.
@@ -157,12 +165,11 @@ def defaults():
     """
     for prov in ["anthropic", "openai"]:
         if prov in SERVER_KEYS:
+            model = DEFAULT_MODEL or _PROVIDER_MODEL_DEFAULTS.get(prov, "")
             return {
                 "has_server_key": True,
                 "provider": prov,
-                "model": (
-                    "claude-sonnet-4-20250514" if prov == "anthropic" else "gpt-4o"
-                ),
+                "model": model,
             }
     return {"has_server_key": False, "provider": None, "model": None}
 
