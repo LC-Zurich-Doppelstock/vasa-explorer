@@ -1,7 +1,7 @@
 """
 Vasaloppet Q&A Backend
 
-Orchestrates between the frontend, Claude API, and the isolated code executor.
+Orchestrates between the frontend, LLM providers, and the isolated code executor.
 Maintains per-session conversation history for multi-turn interactions.
 """
 
@@ -10,19 +10,12 @@ import re
 import time
 import uuid
 
-import anthropic
 import httpx
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-# Work around SSL certificate verification issues in Docker
-# (e.g. corporate proxies injecting self-signed certs)
-import ssl
-
-_ssl_ctx = ssl.create_default_context()
-_ssl_ctx.check_hostname = False
-_ssl_ctx.verify_mode = ssl.CERT_NONE
+from providers import PROVIDERS, ProviderAuthError, ProviderAPIError
 
 app = FastAPI(title="Vasaloppet Q&A Backend")
 
@@ -40,122 +33,46 @@ EXECUTOR_URL = os.environ.get("EXECUTOR_URL", "http://executor:9000")
 MAX_RETRIES = 2
 SESSION_TTL = 1800  # 30 minutes
 
+# Server-side API keys (optional). When present the frontend can use the app
+# without the user having to provide their own key.
+SERVER_KEYS: dict[str, str] = {}
+for _prov, _env in [("anthropic", "ANTHROPIC_API_KEY"), ("openai", "OPENAI_API_KEY")]:
+    _val = os.environ.get(_env, "").strip()
+    if _val:
+        SERVER_KEYS[_prov] = _val
+
+# Sentinel value the frontend sends to indicate "use the server key".
+SERVER_KEY_SENTINEL = "__server__"
+
+
+def resolve_api_key(provider_name: str, request_key: str) -> str:
+    """Return the actual API key to use.
+
+    If the request carries the sentinel (or is empty) and a server key exists
+    for this provider, use the server key. Otherwise use whatever the request
+    sent. Raises HTTPException if nothing is available.
+    """
+    if request_key and request_key != SERVER_KEY_SENTINEL:
+        return request_key
+    server_key = SERVER_KEYS.get(provider_name)
+    if server_key:
+        return server_key
+    raise HTTPException(
+        status_code=400,
+        detail="API key is required. Please configure it in Settings.",
+    )
+
+
 # ---------------------------------------------------------------------------
 # Session store: session_id -> { "messages": [...], "last_active": timestamp }
 # ---------------------------------------------------------------------------
 sessions: dict[str, dict] = {}
 
-SYSTEM_PROMPT = """\
-You are a data analyst assistant specializing in Vasaloppet cross-country ski race data.
-You have access to a pandas DataFrame `df` with {row_count} rows of historical results from 1922 to 2026.
+from pathlib import Path
 
-## About Vasaloppet
-
-Vasaloppet is the world's oldest and largest cross-country ski race, held annually in
-Dalarna, Sweden. The race covers 90 km from Sälen to Mora, retracing the route that
-King Gustav Vasa is said to have skied in 1520 when fleeing Danish soldiers. Two men
-from Mora caught up with him and convinced him to return and lead a rebellion, which
-ultimately led to Swedish independence and Gustav Vasa becoming King of Sweden.
-
-The first race was held on 19 March 1922 and has been held every year since (except
-1932 and 1934 due to lack of snow, and 1990 due to warm weather). The race takes
-place on the first Sunday of March. The main event is the classic-style 90 km race,
-but Vasaloppet Week also includes shorter races and a 90 km skating-style race
-(Vasaloppet Öppet Spår).
-
-Key checkpoints along the route (with approximate distances from start):
-- Smågan (~24 km) — first major feed station
-- Mångsbodarna (~35 km)
-- Risberg (~47 km) — roughly halfway
-- Evertsberg (~58 km) — the famous Evertsberg climb
-- Oxberg (~71 km)
-- Hökberg (~81 km)
-- Eldris (~88 km) — final checkpoint before the finish
-- Mora (~90 km) — the finish line, where the winner touches the finish post
-
-The race motto is "I fäders spår — för framtids segrar" (In the footsteps of our
-forefathers — for future victories). The winner's wreath is a crown of laurel, and
-the last finisher to cross the line before the cutoff is called "Siste Smansen."
-
-Finishers can earn a Vasaloppet medal based on their time relative to the winner's
-time. To receive a medal, a skier must finish within 1.5 times the winner's finish
-time. This makes the medal cutoff different each year depending on conditions and
-the winning pace.
-
-Along the course through the forests of Dalarna, skiers may occasionally spot
-järv (wolverine, Gulo gulo) — one of Sweden's rarest and most elusive predators.
-The Swedish woods are home to a notable population of järvar, and sightings near
-the Vasaloppet trail, while uncommon, are part of the wilderness character of the race.
-
-## DataFrame schema
-
-Columns and dtypes:
-- Year (int64): Race year, 1922-2026
-- Name (str): Participant name, format "Lastname, Firstname"
-- Nation (str): 3-letter country code (SWE, NOR, FIN, DEN, GER, CZE, ITA, SUI, EST, AUT, and ~90 more)
-- Status (str): "Finished", "Did Not Finish", "Not Started", "Started", or NaN
-- Sex (str): "M" or "W"
-- Bib (str): Bib number (e.g. "M10997"), may be NaN for older years
-- StartGroup (str): Start group number as string ("1" through "10"), NaN for older years
-- Group (str): Age/sex category (e.g. "H21", "H35", "H40", "H45", "H50", "H55", "H60", "H65", "D21", "D35", "D40", "D45", "D50", "D55", "D60"). H=Herrar(Men), D=Damer(Women). Number is minimum age.
-- Checkpoint split times in SECONDS (float64), NaN if participant didn't reach that checkpoint:
-  - Hogsta_punkten: ~11 km
-  - Smagan: ~24 km
-  - Mangsbodarna: ~35 km
-  - Risberg: ~47 km
-  - Evertsberg: ~58 km
-  - Oxberg: ~71 km
-  - Hokberg: ~81 km
-  - Eldris: ~88 km
-  - Finish: ~90 km (total race distance)
-
-Note: The actual column names use Swedish characters: "Högsta punkten", "Smågan", "Mångsbodarna", etc.
-
-Additionally, timedelta versions of each split column are available with a `_td` suffix:
-- "Högsta punkten_td", "Smågan_td", ..., "Finish_td" (pandas Timedelta type)
-
-SPLIT_COLS is available as a list: ["Högsta punkten", "Smågan", "Mångsbodarna", "Risberg", "Evertsberg", "Oxberg", "Hökberg", "Eldris", "Finish"]
-
-## Available packages in the executor
-- pandas (as pd)
-- numpy (as np)
-- matplotlib.pyplot (as plt)
-- seaborn (as sns)
-- scipy
-
-## Instructions
-
-When the user asks a question about the data:
-
-1. **ALWAYS write Python code to answer questions about actual data values** (e.g. who won, how many participants, what was someone's time, rankings, statistics, etc.). NEVER answer data questions from memory or training knowledge — your training data may be inaccurate or outdated. The only source of truth is the DataFrame `df`.
-
-2. You may answer in plain text WITHOUT code ONLY for:
-   - Meta-questions about the schema (e.g. "what columns are available?", "what format are the times in?")
-   - General knowledge questions about Vasaloppet (e.g. history, route, traditions, rules) using the information provided above.
-   NEVER answer in plain text when the question involves specific data values, results, or statistics.
-
-3. Write Python code in a fenced code block tagged ```python.
-   - The DataFrame `df` is already loaded and available.
-   - Use `print()` to output text results.
-   - Use matplotlib/seaborn to create figures. Do NOT call `plt.savefig()` or `plt.show()` — the system captures figures automatically.
-   - Format times nicely for the user: convert seconds to HH:MM:SS when displaying.
-   - Always include clear axis labels and titles on charts.
-
-4. **Keep printed output concise and summarizing, formatted as Markdown.**
-   - Use Markdown formatting in print() output: **bold** for emphasis, bullet lists, tables where appropriate, headings for structure.
-   - When a chart is generated, let the chart carry the detailed data. The printed text should provide a brief summary, highlight key takeaways, or explain what the chart shows — NOT repeat all the data points from the chart.
-   - For non-chart queries, print a short focused answer (e.g. the winner's name and time), not a full data dump.
-   - Only print long tables or full listings when the user explicitly asks for them (e.g. "list all winners" or "show the full table").
-
-5. IMPORTANT: Only write ONE code block per response. Do not mix code and text explanations before the code. Put your explanation AFTER the code block, or include it as print() statements within the code.
-
-6. If your code produces an error, you'll be told the traceback. Fix the code and try again.
-
-7. When working with times, remember they are in seconds. To convert to a readable format:
-   `pd.to_timedelta(seconds, unit='s')` or manual formatting.
-
-8. NEVER guess or fabricate data values. If the data doesn't contain what was asked, say so based on the code output.
-"""
+SYSTEM_PROMPT = (Path(__file__).parent / "system_prompt.txt").read_text(
+    encoding="utf-8"
+)
 
 
 def cleanup_sessions():
@@ -196,10 +113,16 @@ async def execute_code(code: str) -> dict:
         return resp.json()
 
 
+# ---------------------------------------------------------------------------
+# Request / Response models
+# ---------------------------------------------------------------------------
+
+
 class AskRequest(BaseModel):
     question: str
     session_id: str | None = None
-    api_key: str
+    provider: str = "anthropic"
+    api_key: str = ""
     model: str = "claude-sonnet-4-20250514"
 
 
@@ -209,95 +132,102 @@ class AskResponse(BaseModel):
     session_id: str
 
 
+class ModelsRequest(BaseModel):
+    provider: str = "anthropic"
+    api_key: str = ""
+
+
+# ---------------------------------------------------------------------------
+# Endpoints
+# ---------------------------------------------------------------------------
+
+
 @app.get("/health")
 @app.get("/api/health")
 def health():
     return {"status": "ok"}
 
 
-class ModelsRequest(BaseModel):
-    api_key: str
+@app.get("/api/defaults")
+def defaults():
+    """Tell the frontend whether a server-side API key is available.
+
+    Returns the first provider that has a server key so the frontend can
+    pre-select it and skip the settings modal. The actual key is never exposed.
+    """
+    for prov in ["anthropic", "openai"]:
+        if prov in SERVER_KEYS:
+            return {
+                "has_server_key": True,
+                "provider": prov,
+                "model": (
+                    "claude-sonnet-4-20250514" if prov == "anthropic" else "gpt-4o"
+                ),
+            }
+    return {"has_server_key": False, "provider": None, "model": None}
 
 
 @app.post("/api/models")
 async def list_models(req: ModelsRequest):
-    """Fetch available models from the Anthropic API using the user's key."""
-    if not req.api_key:
-        raise HTTPException(status_code=400, detail="API key is required.")
+    """Fetch available models from the selected provider using the user's key."""
+    provider = PROVIDERS.get(req.provider)
+    if not provider:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unknown provider: {req.provider}. Available: {', '.join(PROVIDERS)}",
+        )
+
+    api_key = resolve_api_key(req.provider, req.api_key)
 
     try:
-        async with httpx.AsyncClient(verify=_ssl_ctx, timeout=15.0) as client:
-            models = []
-            after_id = None
-            # Paginate through all models
-            while True:
-                params = {"limit": 1000}
-                if after_id:
-                    params["after_id"] = after_id
-                resp = await client.get(
-                    "https://api.anthropic.com/v1/models",
-                    headers={
-                        "x-api-key": req.api_key,
-                        "anthropic-version": "2023-06-01",
-                    },
-                    params=params,
-                )
-                if resp.status_code == 401:
-                    raise HTTPException(status_code=401, detail="Invalid API key.")
-                resp.raise_for_status()
-                data = resp.json()
-                models.extend(
-                    {"id": m["id"], "name": m["display_name"]}
-                    for m in data.get("data", [])
-                )
-                if not data.get("has_more"):
-                    break
-                after_id = data.get("last_id")
-            return {"models": models}
-    except HTTPException:
-        raise
+        models = await provider.list_models(api_key)
+        return {"models": models}
+    except ProviderAuthError as e:
+        raise HTTPException(status_code=401, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Failed to fetch models: {e}")
 
 
 @app.post("/api/ask", response_model=AskResponse)
 async def ask(req: AskRequest):
-    if not req.api_key:
+    provider = PROVIDERS.get(req.provider)
+    if not provider:
         raise HTTPException(
             status_code=400,
-            detail="API key is required. Please configure it in Settings.",
+            detail=f"Unknown provider: {req.provider}. Available: {', '.join(PROVIDERS)}",
         )
 
+    api_key = resolve_api_key(req.provider, req.api_key)
     session_id, messages = get_or_create_session(req.session_id)
 
     # Add the user's question
     messages.append({"role": "user", "content": req.question})
 
-    http_client = httpx.Client(verify=_ssl_ctx)
-    client = anthropic.Anthropic(api_key=req.api_key, http_client=http_client)
+    system_prompt = SYSTEM_PROMPT.format(row_count="764,830")
 
-    # Retry loop: ask Claude, execute code if needed, retry on errors
+    # Retry loop: ask LLM, execute code if needed, retry on errors
     final_text = ""
     final_image = None
 
     for attempt in range(MAX_RETRIES + 1):
         try:
-            response = client.messages.create(
+            assistant_text = await provider.chat(
+                api_key=api_key,
                 model=req.model,
-                max_tokens=4096,
-                system=SYSTEM_PROMPT.format(row_count="764,830"),
+                system=system_prompt,
                 messages=messages,
             )
-        except anthropic.APIError as e:
-            raise HTTPException(
-                status_code=502, detail=f"Anthropic API error: {e.message}"
-            )
+        except ProviderAuthError as e:
+            raise HTTPException(status_code=401, detail=str(e))
+        except ProviderAPIError as e:
+            raise HTTPException(status_code=502, detail=str(e))
+        except Exception as e:
+            raise HTTPException(status_code=502, detail=f"LLM request failed: {e}")
 
-        assistant_text = response.content[0].text
         code = extract_code_block(assistant_text)
 
         if code is None:
-            # Claude answered directly without code
+            # LLM answered directly without code
             messages.append({"role": "assistant", "content": assistant_text})
             final_text = assistant_text
             break
@@ -318,7 +248,7 @@ async def ask(req: AskRequest):
             continue
 
         if result.get("error"):
-            # Code errored — feed traceback back to Claude
+            # Code errored — feed traceback back to the LLM
             messages.append({"role": "assistant", "content": assistant_text})
             error_feedback = (
                 f"The code produced an error:\n```\n{result['error']}\n```\n"
@@ -335,7 +265,7 @@ async def ask(req: AskRequest):
         image = result.get("image")
 
         # Build a clean text response from the code execution output only.
-        # We discard Claude's surrounding text because it may contain
+        # We discard the LLM's surrounding text because it may contain
         # hallucinated answers not grounded in the actual data.
         if stdout:
             final_text = stdout
@@ -343,7 +273,7 @@ async def ask(req: AskRequest):
             final_text = "Done."
         final_image = f"data:image/png;base64,{image}" if image else None
 
-        # Add a summary of the execution result to the conversation so Claude
+        # Add a summary of the execution result to the conversation so the LLM
         # knows what happened for follow-up questions
         exec_summary = ""
         if stdout:

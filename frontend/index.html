@@ -433,6 +433,42 @@
             margin-bottom: 16px;
         }
 
+        /* Provider tabs */
+        .provider-tabs {
+            display: flex;
+            gap: 0;
+            margin-bottom: 20px;
+            border: 1px solid #2e2e33;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        .provider-tab {
+            flex: 1;
+            padding: 8px 12px;
+            background: #141416;
+            color: #71717a;
+            border: none;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s;
+            text-align: center;
+        }
+
+        .provider-tab:not(:last-child) {
+            border-right: 1px solid #2e2e33;
+        }
+
+        .provider-tab.active {
+            background: #2e2e33;
+            color: #e8e8ec;
+        }
+
+        .provider-tab:hover:not(.active) {
+            color: #a1a1aa;
+        }
+
         .modal select {
             width: 100%;
             background: #141416;
@@ -494,9 +530,13 @@
     <div class="modal-overlay" id="settings-modal">
         <div class="modal">
             <h2>API Settings</h2>
-            <label for="api-key-input">Anthropic API Key</label>
+            <div class="provider-tabs">
+                <button class="provider-tab active" data-provider="anthropic" onclick="switchProvider('anthropic')">Anthropic</button>
+                <button class="provider-tab" data-provider="openai" onclick="switchProvider('openai')">OpenAI</button>
+            </div>
+            <label for="api-key-input">API Key</label>
             <input type="password" id="api-key-input" placeholder="sk-ant-...">
-            <p class="key-hint">Your key is stored locally in your browser and sent directly to Anthropic.</p>
+            <p class="key-hint" id="key-hint">Your key is stored locally in your browser and sent directly to Anthropic.</p>
             <label for="model-select">Model</label>
             <div id="model-wrapper">
                 <select id="model-select" disabled>
@@ -553,19 +593,70 @@
         let sessionId = null;
         let isLoading = false;
 
-        const DEFAULT_MODEL = "claude-sonnet-4-20250514";
-        let cachedModels = []; // cache fetched models
+        const DEFAULTS = {
+            anthropic: "claude-sonnet-4-20250514",
+            openai: "gpt-4o",
+        };
 
-        // --- Settings ---
-        function getApiKey() {
-            return localStorage.getItem("vasa_api_key") || "";
+        const KEY_HINTS = {
+            anthropic: { placeholder: "sk-ant-...", text: "Your key is stored locally in your browser and sent directly to Anthropic." },
+            openai:    { placeholder: "sk-...",     text: "Your key is stored locally in your browser and sent directly to OpenAI." },
+        };
+
+        let cachedModels = {}; // { provider: [...] }
+        let modalProvider = "anthropic"; // which tab is active in the modal
+        let serverKeyProvider = null; // set if server has a key available
+
+        const SERVER_KEY_SENTINEL = "__server__";
+
+        // --- Per-provider localStorage ---
+        function getProvider() {
+            return localStorage.getItem("vasa_provider") || "anthropic";
         }
 
-        function getModel() {
-            return localStorage.getItem("vasa_model") || DEFAULT_MODEL;
+        function getApiKey(provider) {
+            provider = provider || getProvider();
+            const stored = localStorage.getItem("vasa_key_" + provider) || "";
+            if (stored) return stored;
+            // Fall back to server key if this provider has one
+            if (provider === serverKeyProvider) return SERVER_KEY_SENTINEL;
+            return "";
         }
 
-        async function fetchModels(apiKey) {
+        function getModel(provider) {
+            provider = provider || getProvider();
+            return localStorage.getItem("vasa_model_" + provider) || DEFAULTS[provider] || "";
+        }
+
+        // --- Provider tab switching in modal ---
+        function switchProvider(provider) {
+            modalProvider = provider;
+
+            // Update tab visuals
+            document.querySelectorAll(".provider-tab").forEach(tab => {
+                tab.classList.toggle("active", tab.dataset.provider === provider);
+            });
+
+            // Update key input
+            const keyInput = document.getElementById("api-key-input");
+            const storedKey = localStorage.getItem("vasa_key_" + provider) || "";
+            keyInput.value = storedKey;
+            keyInput.placeholder = KEY_HINTS[provider].placeholder;
+
+            // Update hint text
+            const hint = document.getElementById("key-hint");
+            if (!storedKey && provider === serverKeyProvider) {
+                hint.textContent = "A server-provided key is active. Enter your own key here to override it.";
+            } else {
+                hint.textContent = KEY_HINTS[provider].text;
+            }
+
+            // Fetch models for this provider
+            fetchModels(provider, getApiKey(provider));
+        }
+
+        // --- Fetch models ---
+        async function fetchModels(provider, apiKey) {
             const select = document.getElementById("model-select");
             const status = document.getElementById("model-status");
 
@@ -573,7 +664,7 @@
                 select.innerHTML = '<option value="">Enter API key to load models</option>';
                 select.disabled = true;
                 status.textContent = "";
-                cachedModels = [];
+                cachedModels[provider] = [];
                 return;
             }
 
@@ -585,7 +676,7 @@
                 const resp = await fetch("/api/models", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ api_key: apiKey }),
+                    body: JSON.stringify({ api_key: apiKey, provider: provider }),
                 });
 
                 if (!resp.ok) {
@@ -594,22 +685,23 @@
                 }
 
                 const data = await resp.json();
-                cachedModels = data.models || [];
+                const models = data.models || [];
+                cachedModels[provider] = models;
 
-                if (cachedModels.length === 0) {
+                if (models.length === 0) {
                     select.innerHTML = '<option value="">No models available</option>';
                     select.disabled = true;
                     return;
                 }
 
-                const savedModel = getModel();
-                select.innerHTML = cachedModels
+                const savedModel = getModel(provider);
+                select.innerHTML = models
                     .map(m => `<option value="${m.id}" ${m.id === savedModel ? "selected" : ""}>${m.name} (${m.id})</option>`)
                     .join("");
                 select.disabled = false;
 
                 // If saved model isn't in the list, select first
-                if (!cachedModels.some(m => m.id === savedModel)) {
+                if (!models.some(m => m.id === savedModel)) {
                     select.selectedIndex = 0;
                 }
             } catch (e) {
@@ -620,44 +712,54 @@
             }
         }
 
+        // --- Status dot: green if current provider has a key (user or server) ---
         function updateStatusDot() {
-            const hasKey = !!getApiKey();
+            const provider = getProvider();
+            const hasKey = !!getApiKey(provider);
             statusDot.classList.toggle("connected", hasKey);
             if (welcomeHint) {
                 welcomeHint.textContent = hasKey
                     ? "Try one of these examples:"
-                    : "Set up your Anthropic API key in Settings to get started.";
+                    : "Set up your API key in Settings to get started.";
             }
         }
 
+        // --- Open settings modal ---
         function openSettings() {
-            const keyInput = document.getElementById("api-key-input");
-            keyInput.value = getApiKey();
+            // Start on the currently active provider tab
+            modalProvider = getProvider();
+            switchProvider(modalProvider);
             document.getElementById("settings-modal").classList.add("active");
-            fetchModels(getApiKey());
         }
 
         function closeSettings() {
             document.getElementById("settings-modal").classList.remove("active");
         }
 
+        // --- Save settings ---
         function saveSettings() {
             const key = document.getElementById("api-key-input").value.trim();
             const select = document.getElementById("model-select");
-            const model = select.value || DEFAULT_MODEL;
-            localStorage.setItem("vasa_api_key", key);
-            localStorage.setItem("vasa_model", model);
+            const model = select.value || DEFAULTS[modalProvider] || "";
+
+            // Save the key and model for the currently visible provider tab
+            localStorage.setItem("vasa_key_" + modalProvider, key);
+            localStorage.setItem("vasa_model_" + modalProvider, model);
+
+            // Set this as the active provider
+            localStorage.setItem("vasa_provider", modalProvider);
+
             updateStatusDot();
             closeSettings();
         }
 
-        // Fetch models when API key input loses focus or user presses Enter
+        // Fetch models when API key input changes (debounced)
         let fetchDebounce = null;
         document.getElementById("api-key-input").addEventListener("input", () => {
             clearTimeout(fetchDebounce);
             fetchDebounce = setTimeout(() => {
                 const key = document.getElementById("api-key-input").value.trim();
-                fetchModels(key);
+                fetchModels(modalProvider, key);
             }, 500);
         });
 
@@ -668,6 +770,29 @@
 
         // Init status
         updateStatusDot();
+
+        // Check if the server has a default API key available
+        (async function checkDefaults() {
+            try {
+                const resp = await fetch("/api/defaults");
+                if (!resp.ok) return;
+                const data = await resp.json();
+                if (data.has_server_key && data.provider) {
+                    serverKeyProvider = data.provider;
+                    // If user hasn't explicitly chosen a provider yet, use the server's
+                    if (!localStorage.getItem("vasa_provider")) {
+                        localStorage.setItem("vasa_provider", data.provider);
+                    }
+                    // If user hasn't set a model for this provider, use the server default
+                    if (!localStorage.getItem("vasa_model_" + data.provider) && data.model) {
+                        localStorage.setItem("vasa_model_" + data.provider, data.model);
+                    }
+                    updateStatusDot();
+                }
+            } catch (e) {
+                // Server not reachable yet — ignore, user can configure manually
+            }
+        })();
 
         // Auto-resize textarea
         questionEl.addEventListener("input", () => {
@@ -752,9 +877,12 @@
             const text = questionEl.value.trim();
             if (!text || isLoading) return;
 
-            const apiKey = getApiKey();
+            const provider = getProvider();
+            const apiKey = getApiKey(provider);
+            const model = getModel(provider);
+
             if (!apiKey) {
-                addMessage("assistant", "Please configure your Anthropic API key in Settings first.");
+                addMessage("assistant", "Please configure your API key in Settings first.");
                 openSettings();
                 return;
             }
@@ -775,7 +903,8 @@
                         question: text,
                         session_id: sessionId,
                         api_key: apiKey,
-                        model: getModel(),
+                        model: model,
+                        provider: provider,
                     }),
                 });
 

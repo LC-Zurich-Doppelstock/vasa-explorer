@@ -12,6 +12,8 @@ services:
     build: ./backend
     environment:
       - EXECUTOR_URL=http://executor:9000
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
     depends_on:
       - executor
     networks:
