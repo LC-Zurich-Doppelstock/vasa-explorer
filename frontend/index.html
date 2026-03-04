@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Vasaloppet Data Explorer</title>
+    <script src="/marked.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -75,17 +76,110 @@
             padding: 16px;
             font-size: 14px;
             line-height: 1.6;
-            white-space: pre-wrap;
             word-wrap: break-word;
         }
 
         .message.user .message-content {
             background: #27212e;
             border-color: #a855f733;
+            white-space: pre-wrap;
         }
 
         .message.assistant .message-content {
             border-left: 3px solid #34d399;
+        }
+
+        /* Markdown styles for assistant messages */
+        .message.assistant .message-content p {
+            margin: 0 0 12px 0;
+        }
+
+        .message.assistant .message-content p:last-child {
+            margin-bottom: 0;
+        }
+
+        .message.assistant .message-content h1,
+        .message.assistant .message-content h2,
+        .message.assistant .message-content h3 {
+            color: #e8e8ec;
+            margin: 16px 0 8px 0;
+        }
+
+        .message.assistant .message-content h1:first-child,
+        .message.assistant .message-content h2:first-child,
+        .message.assistant .message-content h3:first-child {
+            margin-top: 0;
+        }
+
+        .message.assistant .message-content h1 { font-size: 18px; }
+        .message.assistant .message-content h2 { font-size: 16px; }
+        .message.assistant .message-content h3 { font-size: 15px; }
+
+        .message.assistant .message-content ul,
+        .message.assistant .message-content ol {
+            margin: 8px 0;
+            padding-left: 24px;
+        }
+
+        .message.assistant .message-content li {
+            margin: 4px 0;
+        }
+
+        .message.assistant .message-content strong {
+            color: #e8e8ec;
+        }
+
+        .message.assistant .message-content table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 12px 0;
+            font-size: 13px;
+        }
+
+        .message.assistant .message-content th {
+            background: #232326;
+            color: #e8e8ec;
+            font-weight: 600;
+            text-align: left;
+            padding: 8px 12px;
+            border: 1px solid #2e2e33;
+        }
+
+        .message.assistant .message-content td {
+            padding: 6px 12px;
+            border: 1px solid #2e2e33;
+        }
+
+        .message.assistant .message-content tr:nth-child(even) {
+            background: #1a1a1d;
+        }
+
+        .message.assistant .message-content pre {
+            background: #0f0f11;
+            border: 1px solid #2e2e33;
+            border-radius: 6px;
+            padding: 12px;
+            overflow-x: auto;
+            margin: 12px 0;
+        }
+
+        .message.assistant .message-content pre code {
+            background: none;
+            padding: 0;
+            font-size: 13px;
+        }
+
+        .message.assistant .message-content blockquote {
+            border-left: 3px solid #fb923c;
+            padding-left: 12px;
+            margin: 12px 0;
+            color: #a1a1aa;
+        }
+
+        .message.assistant .message-content hr {
+            border: none;
+            border-top: 1px solid #2e2e33;
+            margin: 16px 0;
         }
 
         .message-content img {
@@ -204,6 +298,163 @@
             margin-bottom: 8px;
         }
 
+        /* Settings button */
+        #settings-btn {
+            margin-left: auto;
+            background: none;
+            border: 1px solid #2e2e33;
+            border-radius: 6px;
+            padding: 6px 10px;
+            color: #a1a1aa;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.15s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        #settings-btn:hover {
+            border-color: #fb923c;
+            color: #e8e8ec;
+        }
+
+        #settings-btn .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #ef4444;
+        }
+
+        #settings-btn .status-dot.connected {
+            background: #34d399;
+        }
+
+        /* Modal overlay */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 100;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal {
+            background: #1c1c1f;
+            border: 1px solid #2e2e33;
+            border-radius: 12px;
+            padding: 28px;
+            width: 420px;
+            max-width: 90vw;
+        }
+
+        .modal h2 {
+            font-size: 16px;
+            color: #e8e8ec;
+            margin-bottom: 20px;
+        }
+
+        .modal label {
+            display: block;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #a1a1aa;
+            margin-bottom: 6px;
+        }
+
+        .modal input {
+            width: 100%;
+            background: #141416;
+            border: 1px solid #2e2e33;
+            border-radius: 6px;
+            padding: 10px 12px;
+            color: #d4d4d8;
+            font-size: 14px;
+            font-family: inherit;
+            outline: none;
+            margin-bottom: 16px;
+        }
+
+        .modal input:focus {
+            border-color: #fb923c;
+        }
+
+        .modal input::placeholder {
+            color: #52525b;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 4px;
+        }
+
+        .modal-actions button {
+            border: none;
+            border-radius: 6px;
+            padding: 8px 18px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+
+        .btn-cancel {
+            background: #2e2e33;
+            color: #a1a1aa;
+        }
+
+        .btn-cancel:hover {
+            background: #3f3f46;
+        }
+
+        .btn-save {
+            background: #fb923c;
+            color: #1c1c1f;
+        }
+
+        .btn-save:hover {
+            background: #f97316;
+        }
+
+        .key-hint {
+            font-size: 12px;
+            color: #52525b;
+            margin-top: -12px;
+            margin-bottom: 16px;
+        }
+
+        .modal select {
+            width: 100%;
+            background: #141416;
+            border: 1px solid #2e2e33;
+            border-radius: 6px;
+            padding: 10px 12px;
+            color: #d4d4d8;
+            font-size: 14px;
+            font-family: inherit;
+            outline: none;
+            margin-bottom: 16px;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%2371717a' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            cursor: pointer;
+        }
+
+        .modal select:focus {
+            border-color: #fb923c;
+        }
+
         .examples {
             display: flex;
             flex-wrap: wrap;
@@ -233,13 +484,38 @@
     <header>
         <h1>Vasaloppet Data Explorer</h1>
         <span>764,830 results from 1922 to 2026</span>
+        <button id="settings-btn" onclick="openSettings()">
+            <span class="status-dot" id="status-dot"></span>
+            Settings
+        </button>
     </header>
+
+    <!-- Settings Modal -->
+    <div class="modal-overlay" id="settings-modal">
+        <div class="modal">
+            <h2>API Settings</h2>
+            <label for="api-key-input">Anthropic API Key</label>
+            <input type="password" id="api-key-input" placeholder="sk-ant-...">
+            <p class="key-hint">Your key is stored locally in your browser and sent directly to Anthropic.</p>
+            <label for="model-select">Model</label>
+            <div id="model-wrapper">
+                <select id="model-select" disabled>
+                    <option value="">Enter API key to load models</option>
+                </select>
+                <p id="model-status" class="key-hint"></p>
+            </div>
+            <div class="modal-actions">
+                <button class="btn-cancel" onclick="closeSettings()">Cancel</button>
+                <button class="btn-save" onclick="saveSettings()">Save</button>
+            </div>
+        </div>
+    </div>
 
     <div id="chat">
         <div class="welcome">
             <h2>Ask anything about Vasaloppet</h2>
             <p>This tool queries 100+ years of race results using AI-powered data analysis.</p>
-            <p>Try one of these examples:</p>
+            <p id="welcome-hint"></p>
             <div class="examples">
                 <button class="example-btn" onclick="askExample(this)">Who won Vasaloppet in 2024?</button>
                 <button class="example-btn" onclick="askExample(this)">Plot the number of participants over time</button>
@@ -258,12 +534,133 @@
     </div>
 
     <script>
+        // Verify marked library loaded
+        console.log("marked available:", typeof marked, "marked.parse:", typeof marked?.parse);
+
         const chatEl = document.getElementById("chat");
         const questionEl = document.getElementById("question");
         const sendBtn = document.getElementById("send-btn");
+        const statusDot = document.getElementById("status-dot");
+        const welcomeHint = document.getElementById("welcome-hint");
 
         let sessionId = null;
         let isLoading = false;
+
+        const DEFAULT_MODEL = "claude-sonnet-4-20250514";
+        let cachedModels = []; // cache fetched models
+
+        // --- Settings ---
+        function getApiKey() {
+            return localStorage.getItem("vasa_api_key") || "";
+        }
+
+        function getModel() {
+            return localStorage.getItem("vasa_model") || DEFAULT_MODEL;
+        }
+
+        async function fetchModels(apiKey) {
+            const select = document.getElementById("model-select");
+            const status = document.getElementById("model-status");
+
+            if (!apiKey) {
+                select.innerHTML = '<option value="">Enter API key to load models</option>';
+                select.disabled = true;
+                status.textContent = "";
+                cachedModels = [];
+                return;
+            }
+
+            select.innerHTML = '<option value="">Loading models...</option>';
+            select.disabled = true;
+            status.textContent = "";
+
+            try {
+                const resp = await fetch("/api/models", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ api_key: apiKey }),
+                });
+
+                if (!resp.ok) {
+                    const err = await resp.json().catch(() => ({}));
+                    throw new Error(err.detail || resp.statusText);
+                }
+
+                const data = await resp.json();
+                cachedModels = data.models || [];
+
+                if (cachedModels.length === 0) {
+                    select.innerHTML = '<option value="">No models available</option>';
+                    select.disabled = true;
+                    return;
+                }
+
+                const savedModel = getModel();
+                select.innerHTML = cachedModels
+                    .map(m => `<option value="${m.id}" ${m.id === savedModel ? "selected" : ""}>${m.name} (${m.id})</option>`)
+                    .join("");
+                select.disabled = false;
+
+                // If saved model isn't in the list, select first
+                if (!cachedModels.some(m => m.id === savedModel)) {
+                    select.selectedIndex = 0;
+                }
+            } catch (e) {
+                select.innerHTML = '<option value="">Failed to load models</option>';
+                select.disabled = true;
+                status.textContent = e.message;
+                status.style.color = "#ef4444";
+            }
+        }
+
+        function updateStatusDot() {
+            const hasKey = !!getApiKey();
+            statusDot.classList.toggle("connected", hasKey);
+            if (welcomeHint) {
+                welcomeHint.textContent = hasKey
+                    ? "Try one of these examples:"
+                    : "Set up your Anthropic API key in Settings to get started.";
+            }
+        }
+
+        function openSettings() {
+            const keyInput = document.getElementById("api-key-input");
+            keyInput.value = getApiKey();
+            document.getElementById("settings-modal").classList.add("active");
+            fetchModels(getApiKey());
+        }
+
+        function closeSettings() {
+            document.getElementById("settings-modal").classList.remove("active");
+        }
+
+        function saveSettings() {
+            const key = document.getElementById("api-key-input").value.trim();
+            const select = document.getElementById("model-select");
+            const model = select.value || DEFAULT_MODEL;
+            localStorage.setItem("vasa_api_key", key);
+            localStorage.setItem("vasa_model", model);
+            updateStatusDot();
+            closeSettings();
+        }
+
+        // Fetch models when API key input loses focus or user presses Enter
+        let fetchDebounce = null;
+        document.getElementById("api-key-input").addEventListener("input", () => {
+            clearTimeout(fetchDebounce);
+            fetchDebounce = setTimeout(() => {
+                const key = document.getElementById("api-key-input").value.trim();
+                fetchModels(key);
+            }, 500);
+        });
+
+        // Close modal on overlay click
+        document.getElementById("settings-modal").addEventListener("click", (e) => {
+            if (e.target === e.currentTarget) closeSettings();
+        });
+
+        // Init status
+        updateStatusDot();
 
         // Auto-resize textarea
         questionEl.addEventListener("input", () => {
@@ -298,7 +695,19 @@
 
             const content = document.createElement("div");
             content.className = "message-content";
-            content.textContent = text;
+
+            if (role === "assistant") {
+                // Render markdown for assistant messages
+                try {
+                    const parsed = marked.parse(text);
+                    content.innerHTML = parsed;
+                } catch (e) {
+                    console.error("marked.parse failed:", e);
+                    content.textContent = text;
+                }
+            } else {
+                content.textContent = text;
+            }
 
             if (image) {
                 const img = document.createElement("img");
@@ -342,6 +751,13 @@
             const text = questionEl.value.trim();
             if (!text || isLoading) return;
 
+            const apiKey = getApiKey();
+            if (!apiKey) {
+                addMessage("assistant", "Please configure your Anthropic API key in Settings first.");
+                openSettings();
+                return;
+            }
+
             isLoading = true;
             sendBtn.disabled = true;
             questionEl.value = "";
@@ -357,6 +773,8 @@
                     body: JSON.stringify({
                         question: text,
                         session_id: sessionId,
+                        api_key: apiKey,
+                        model: getModel(),
                     }),
                 });
 

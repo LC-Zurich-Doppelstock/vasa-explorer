@@ -11,9 +11,7 @@ services:
   backend:
     build: ./backend
     environment:
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       - EXECUTOR_URL=http://executor:9000
-      - ANTHROPIC_MODEL=${ANTHROPIC_MODEL:-claude-sonnet-4-20250514}
     depends_on:
       - executor
     networks:

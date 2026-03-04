@@ -36,9 +36,7 @@ app.add_middleware(
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
-ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 EXECUTOR_URL = os.environ.get("EXECUTOR_URL", "http://executor:9000")
-MODEL = os.environ.get("ANTHROPIC_MODEL", "claude-sonnet-4-20250514")
 MAX_RETRIES = 2
 SESSION_TTL = 1800  # 30 minutes
 
@@ -142,16 +140,21 @@ When the user asks a question about the data:
    - Use matplotlib/seaborn to create figures. Do NOT call `plt.savefig()` or `plt.show()` — the system captures figures automatically.
    - Format times nicely for the user: convert seconds to HH:MM:SS when displaying.
    - Always include clear axis labels and titles on charts.
-   - Be thorough but concise in printed output.
 
-4. IMPORTANT: Only write ONE code block per response. Do not mix code and text explanations before the code. Put your explanation AFTER the code block, or include it as print() statements within the code.
+4. **Keep printed output concise and summarizing, formatted as Markdown.**
+   - Use Markdown formatting in print() output: **bold** for emphasis, bullet lists, tables where appropriate, headings for structure.
+   - When a chart is generated, let the chart carry the detailed data. The printed text should provide a brief summary, highlight key takeaways, or explain what the chart shows — NOT repeat all the data points from the chart.
+   - For non-chart queries, print a short focused answer (e.g. the winner's name and time), not a full data dump.
+   - Only print long tables or full listings when the user explicitly asks for them (e.g. "list all winners" or "show the full table").
 
-5. If your code produces an error, you'll be told the traceback. Fix the code and try again.
+5. IMPORTANT: Only write ONE code block per response. Do not mix code and text explanations before the code. Put your explanation AFTER the code block, or include it as print() statements within the code.
 
-6. When working with times, remember they are in seconds. To convert to a readable format:
+6. If your code produces an error, you'll be told the traceback. Fix the code and try again.
+
+7. When working with times, remember they are in seconds. To convert to a readable format:
    `pd.to_timedelta(seconds, unit='s')` or manual formatting.
 
-7. NEVER guess or fabricate data values. If the data doesn't contain what was asked, say so based on the code output.
+8. NEVER guess or fabricate data values. If the data doesn't contain what was asked, say so based on the code output.
 """
 
 
@@ -196,6 +199,8 @@ async def execute_code(code: str) -> dict:
 class AskRequest(BaseModel):
     question: str
     session_id: str | None = None
+    api_key: str
+    model: str = "claude-sonnet-4-20250514"
 
 
 class AskResponse(BaseModel):
@@ -210,10 +215,58 @@ def health():
     return {"status": "ok"}
 
 
+class ModelsRequest(BaseModel):
+    api_key: str
+
+
+@app.post("/api/models")
+async def list_models(req: ModelsRequest):
+    """Fetch available models from the Anthropic API using the user's key."""
+    if not req.api_key:
+        raise HTTPException(status_code=400, detail="API key is required.")
+
+    try:
+        async with httpx.AsyncClient(verify=_ssl_ctx, timeout=15.0) as client:
+            models = []
+            after_id = None
+            # Paginate through all models
+            while True:
+                params = {"limit": 1000}
+                if after_id:
+                    params["after_id"] = after_id
+                resp = await client.get(
+                    "https://api.anthropic.com/v1/models",
+                    headers={
+                        "x-api-key": req.api_key,
+                        "anthropic-version": "2023-06-01",
+                    },
+                    params=params,
+                )
+                if resp.status_code == 401:
+                    raise HTTPException(status_code=401, detail="Invalid API key.")
+                resp.raise_for_status()
+                data = resp.json()
+                models.extend(
+                    {"id": m["id"], "name": m["display_name"]}
+                    for m in data.get("data", [])
+                )
+                if not data.get("has_more"):
+                    break
+                after_id = data.get("last_id")
+            return {"models": models}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Failed to fetch models: {e}")
+
+
 @app.post("/api/ask", response_model=AskResponse)
 async def ask(req: AskRequest):
-    if not ANTHROPIC_API_KEY:
-        raise HTTPException(status_code=500, detail="ANTHROPIC_API_KEY not configured")
+    if not req.api_key:
+        raise HTTPException(
+            status_code=400,
+            detail="API key is required. Please configure it in Settings.",
+        )
 
     session_id, messages = get_or_create_session(req.session_id)
 
@@ -221,7 +274,7 @@ async def ask(req: AskRequest):
     messages.append({"role": "user", "content": req.question})
 
     http_client = httpx.Client(verify=_ssl_ctx)
-    client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY, http_client=http_client)
+    client = anthropic.Anthropic(api_key=req.api_key, http_client=http_client)
 
     # Retry loop: ask Claude, execute code if needed, retry on errors
     final_text = ""
@@ -230,7 +283,7 @@ async def ask(req: AskRequest):
     for attempt in range(MAX_RETRIES + 1):
         try:
             response = client.messages.create(
-                model=MODEL,
+                model=req.model,
                 max_tokens=4096,
                 system=SYSTEM_PROMPT.format(row_count="764,830"),
                 messages=messages,
