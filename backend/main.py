@@ -44,7 +44,7 @@ for _prov, _env in [("anthropic", "ANTHROPIC_API_KEY"), ("openai", "OPENAI_API_K
 # Sentinel value the frontend sends to indicate "use the server key".
 SERVER_KEY_SENTINEL = "__server__"
 
-# Optional default model override (e.g. DEFAULT_MODEL=claude-sonnet-4-20250514).
+# Optional default model override (e.g. DEFAULT_MODEL=claude-sonnet-4-6).
 # When unset, falls back to a sensible default per provider.
 _PROVIDER_MODEL_DEFAULTS = {
     "anthropic": "claude-sonnet-4-6",
@@ -131,7 +131,7 @@ class AskRequest(BaseModel):
     session_id: str | None = None
     provider: str = "anthropic"
     api_key: str = ""
-    model: str = "claude-sonnet-4-20250514"
+    model: str = "claude-sonnet-4-6"
 
 
 class AskResponse(BaseModel):

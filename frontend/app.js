@@ -26,7 +26,7 @@ let sessionId = null;
 let isLoading = false;
 
 const DEFAULTS = {
-    anthropic: "claude-sonnet-4-20250514",
+    anthropic: "claude-sonnet-4-6",
     openai: "gpt-4o",
 };
 

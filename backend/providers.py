@@ -37,7 +37,7 @@ class LLMProvider(ABC):
         Parameters
         ----------
         api_key:  User-supplied key for this provider.
-        model:    Model identifier (e.g. "claude-sonnet-4-20250514").
+        model:    Model identifier (e.g. "claude-sonnet-4-6").
         system:   System prompt text.
         messages: Conversation history as [{"role": "user"|"assistant", "content": "..."}].
 
