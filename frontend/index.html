@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vasaloppet Data Explorer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background: #141416;
+            color: #d4d4d8;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        header {
+            background: #1c1c1f;
+            border-bottom: 1px solid #2e2e33;
+            padding: 16px 24px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        header h1 {
+            font-size: 18px;
+            font-weight: 600;
+            color: #e8e8ec;
+        }
+
+        header span {
+            font-size: 13px;
+            color: #71717a;
+        }
+
+        #chat {
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .message {
+            max-width: 800px;
+            width: 100%;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .message-label {
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .message.user .message-label { color: #f0abfc; }
+        .message.assistant .message-label { color: #6ee7b7; }
+
+        .message-content {
+            background: #1c1c1f;
+            border: 1px solid #2e2e33;
+            border-radius: 8px;
+            padding: 16px;
+            font-size: 14px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .message.user .message-content {
+            background: #27212e;
+            border-color: #a855f733;
+        }
+
+        .message.assistant .message-content {
+            border-left: 3px solid #34d399;
+        }
+
+        .message-content img {
+            max-width: 100%;
+            border-radius: 6px;
+            margin-top: 12px;
+            border: 1px solid #2e2e33;
+        }
+
+        .message-content code {
+            background: #141416;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+
+        #input-area {
+            background: #1c1c1f;
+            border-top: 1px solid #2e2e33;
+            padding: 16px 24px;
+        }
+
+        #input-wrapper {
+            max-width: 800px;
+            margin: 0 auto;
+            display: flex;
+            gap: 10px;
+        }
+
+        #question {
+            flex: 1;
+            background: #141416;
+            border: 1px solid #2e2e33;
+            border-radius: 8px;
+            padding: 12px 16px;
+            color: #d4d4d8;
+            font-size: 14px;
+            font-family: inherit;
+            outline: none;
+            resize: none;
+            min-height: 44px;
+            max-height: 120px;
+        }
+
+        #question:focus {
+            border-color: #fb923c;
+        }
+
+        #question::placeholder {
+            color: #52525b;
+        }
+
+        #send-btn {
+            background: #fb923c;
+            color: #1c1c1f;
+            border: none;
+            border-radius: 8px;
+            padding: 0 22px;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background 0.15s;
+            white-space: nowrap;
+            letter-spacing: 0.02em;
+        }
+
+        #send-btn:hover { background: #f97316; }
+        #send-btn:disabled {
+            background: #3f3f46;
+            color: #71717a;
+            cursor: not-allowed;
+        }
+
+        .loading {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #a1a1aa;
+            font-size: 13px;
+        }
+
+        .loading-dots span {
+            display: inline-block;
+            width: 6px;
+            height: 6px;
+            background: #6ee7b7;
+            border-radius: 50%;
+            animation: dot-pulse 1.4s infinite ease-in-out both;
+        }
+
+        .loading-dots span:nth-child(1) { animation-delay: -0.32s; }
+        .loading-dots span:nth-child(2) { animation-delay: -0.16s; }
+
+        @keyframes dot-pulse {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1); }
+        }
+
+        .welcome {
+            max-width: 800px;
+            margin: 0 auto;
+            text-align: center;
+            padding: 60px 20px;
+            color: #71717a;
+        }
+
+        .welcome h2 {
+            font-size: 22px;
+            color: #a1a1aa;
+            margin-bottom: 12px;
+        }
+
+        .welcome p {
+            font-size: 14px;
+            line-height: 1.6;
+            margin-bottom: 8px;
+        }
+
+        .examples {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        .example-btn {
+            background: #1c1c1f;
+            border: 1px solid #2e2e33;
+            border-radius: 6px;
+            padding: 8px 14px;
+            color: #a1a1aa;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .example-btn:hover {
+            border-color: #fb923c;
+            color: #e8e8ec;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Vasaloppet Data Explorer</h1>
+        <span>764,830 results from 1922 to 2026</span>
+    </header>
+
+    <div id="chat">
+        <div class="welcome">
+            <h2>Ask anything about Vasaloppet</h2>
+            <p>This tool queries 100+ years of race results using AI-powered data analysis.</p>
+            <p>Try one of these examples:</p>
+            <div class="examples">
+                <button class="example-btn" onclick="askExample(this)">Who won Vasaloppet in 2024?</button>
+                <button class="example-btn" onclick="askExample(this)">Plot the number of participants over time</button>
+                <button class="example-btn" onclick="askExample(this)">What is the average finish time by decade?</button>
+                <button class="example-btn" onclick="askExample(this)">Show DNF rate trends for men vs women</button>
+                <button class="example-btn" onclick="askExample(this)">Which nations have the most participants?</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="input-area">
+        <div id="input-wrapper">
+            <textarea id="question" placeholder="Ask a question about Vasaloppet data..." rows="1"></textarea>
+            <button id="send-btn" onclick="sendQuestion()">Kör!</button>
+        </div>
+    </div>
+
+    <script>
+        const chatEl = document.getElementById("chat");
+        const questionEl = document.getElementById("question");
+        const sendBtn = document.getElementById("send-btn");
+
+        let sessionId = null;
+        let isLoading = false;
+
+        // Auto-resize textarea
+        questionEl.addEventListener("input", () => {
+            questionEl.style.height = "auto";
+            questionEl.style.height = Math.min(questionEl.scrollHeight, 120) + "px";
+        });
+
+        // Enter to send (shift+enter for newline)
+        questionEl.addEventListener("keydown", (e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                sendQuestion();
+            }
+        });
+
+        function askExample(btn) {
+            questionEl.value = btn.textContent;
+            sendQuestion();
+        }
+
+        function addMessage(role, text, image) {
+            // Remove welcome message on first interaction
+            const welcome = chatEl.querySelector(".welcome");
+            if (welcome) welcome.remove();
+
+            const msg = document.createElement("div");
+            msg.className = `message ${role}`;
+
+            const label = document.createElement("div");
+            label.className = "message-label";
+            label.textContent = role === "user" ? "You" : "Gustav";
+
+            const content = document.createElement("div");
+            content.className = "message-content";
+            content.textContent = text;
+
+            if (image) {
+                const img = document.createElement("img");
+                img.src = image;
+                img.alt = "Generated chart";
+                content.appendChild(img);
+            }
+
+            msg.appendChild(label);
+            msg.appendChild(content);
+            chatEl.appendChild(msg);
+            chatEl.scrollTop = chatEl.scrollHeight;
+            return msg;
+        }
+
+        function addLoading() {
+            const msg = document.createElement("div");
+            msg.className = "message assistant";
+            msg.id = "loading-msg";
+
+            const label = document.createElement("div");
+            label.className = "message-label";
+            label.textContent = "Gustav";
+
+            const content = document.createElement("div");
+            content.className = "message-content loading";
+            content.innerHTML = `Analyzing <span class="loading-dots"><span></span><span></span><span></span></span>`;
+
+            msg.appendChild(label);
+            msg.appendChild(content);
+            chatEl.appendChild(msg);
+            chatEl.scrollTop = chatEl.scrollHeight;
+        }
+
+        function removeLoading() {
+            const el = document.getElementById("loading-msg");
+            if (el) el.remove();
+        }
+
+        async function sendQuestion() {
+            const text = questionEl.value.trim();
+            if (!text || isLoading) return;
+
+            isLoading = true;
+            sendBtn.disabled = true;
+            questionEl.value = "";
+            questionEl.style.height = "auto";
+
+            addMessage("user", text);
+            addLoading();
+
+            try {
+                const resp = await fetch("/api/ask", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        question: text,
+                        session_id: sessionId,
+                    }),
+                });
+
+                removeLoading();
+
+                if (!resp.ok) {
+                    const err = await resp.json().catch(() => ({}));
+                    addMessage("assistant", `Error: ${err.detail || resp.statusText}`);
+                    return;
+                }
+
+                const data = await resp.json();
+                sessionId = data.session_id;
+                addMessage("assistant", data.text, data.image);
+            } catch (e) {
+                removeLoading();
+                addMessage("assistant", `Connection error: ${e.message}`);
+            } finally {
+                isLoading = false;
+                sendBtn.disabled = false;
+                questionEl.focus();
+            }
+        }
+    </script>
+</body>
+</html>

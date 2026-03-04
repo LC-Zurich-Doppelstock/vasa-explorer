@@ -1,0 +1,31 @@
+services:
+  frontend:
+    build: ./frontend
+    ports:
+      - "8088:80"
+    depends_on:
+      - backend
+    networks:
+      - frontend-net
+
+  backend:
+    build: ./backend
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - EXECUTOR_URL=http://executor:9000
+      - ANTHROPIC_MODEL=${ANTHROPIC_MODEL:-claude-sonnet-4-20250514}
+    depends_on:
+      - executor
+    networks:
+      - frontend-net
+      - backend-net
+
+  executor:
+    build: ./executor
+    networks:
+      - backend-net
+
+networks:
+  frontend-net:
+  backend-net:
+    internal: true
