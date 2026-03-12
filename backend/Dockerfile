@@ -7,7 +7,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY providers.py .
 COPY system_prompt.txt .
-COPY main.py .
+COPY config.py models.py sessions.py mcp_client.py orchestrator.py routes.py main.py ./
 
 EXPOSE 8000
 

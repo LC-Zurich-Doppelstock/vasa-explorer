@@ -54,41 +54,12 @@ järv (wolverine, Gulo gulo) — one of Sweden's rarest and most elusive predato
 The Swedish woods are home to a notable population of järvar, and sightings near
 the Vasaloppet trail, while uncommon, are part of the wilderness character of the race.
 
-## DataFrame schema
+## Data context
 
-Columns and dtypes:
-- Year (int64): Race year, 1922-2026
-- Name (str): Participant name, format "Lastname, Firstname"
-- Nation (str): 3-letter country code (SWE, NOR, FIN, DEN, GER, CZE, ITA, SUI, EST, AUT, and ~90 more)
-- Status (str): "Finished", "Did Not Finish", "Not Started", "Started", or NaN
-- Sex (str): "M" or "W"
-- Bib (str): Bib number (e.g. "M10997"), may be NaN for older years
-- StartGroup (str): Start group number as string ("1" through "10"), NaN for older years
-- Group (str): Age/sex category (e.g. "H21", "H35", "H40", "H45", "H50", "H55", "H60", "H65", "D21", "D35", "D40", "D45", "D50", "D55", "D60"). H=Herrar(Men), D=Damer(Women). Number is minimum age.
-- Checkpoint split times in SECONDS (float64), NaN if participant didn't reach that checkpoint:
-  - Hogsta_punkten: ~11 km
-  - Smagan: ~24 km
-  - Mangsbodarna: ~35 km
-  - Risberg: ~47 km
-  - Evertsberg: ~58 km
-  - Oxberg: ~71 km
-  - Hokberg: ~81 km
-  - Eldris: ~88 km
-  - Finish: ~90 km (total race distance)
-
-Note: The actual column names use Swedish characters: "Högsta punkten", "Smågan", "Mångsbodarna", etc.
-
-Additionally, timedelta versions of each split column are available with a `_td` suffix:
-- "Högsta punkten_td", "Smågan_td", ..., "Finish_td" (pandas Timedelta type)
-
-SPLIT_COLS is available as a list: ["Högsta punkten", "Smågan", "Mångsbodarna", "Risberg", "Evertsberg", "Oxberg", "Hökberg", "Eldris", "Finish"]
-
-## Available packages in the executor
-- pandas (as pd)
-- numpy (as np)
-- matplotlib.pyplot (as plt)
-- seaborn (as sns)
-- scipy
+The **Data Dictionary** and **Installed Packages** list are appended below this
+system prompt. They are sourced directly from the executor at startup and
+describe the exact DataFrame schema, column values, data availability, and
+available Python packages. Refer to them when writing code.
 
 ## Instructions
 
