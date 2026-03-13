@@ -23,6 +23,8 @@ services:
 
   executor:
     build: ./executor
+    volumes:
+      - ./data:/data:ro
     networks:
       - backend-net
 

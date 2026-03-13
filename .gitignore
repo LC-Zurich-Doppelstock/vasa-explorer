@@ -26,3 +26,7 @@ Thumbs.db
 
 # Docker
 *.log
+
+# artefacts
+data/**/*.pdf
+data/**/*.png
