@@ -6,7 +6,7 @@ title: |
 author: |
   LC Zürich-Doppelstock\
   \small Analysis of 238,492 race results from vasaloppet.se
-date: "2026-03-02"
+date: "2026-03-13"
 abstract: |
   We analyse 15 editions of the 90\ km Vasaloppet cross-country ski race
   (2011--2026, excluding the 2021 COVID-restricted elite-only edition).
