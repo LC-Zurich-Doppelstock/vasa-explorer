@@ -69,8 +69,18 @@ function Table(tbl)
   lines[#lines+1] = "\\end{tabular}"
 
   -- Caption below the table (uses \captionof from caption package)
+  -- pandoc-crossref prepends "Table N: " to the caption; strip it so
+  -- \captionof can generate its own numbering consistently.
+  local tbl_id = tbl.attr and tbl.attr.identifier or ""
   if caption_text and caption_text ~= "" then
-    lines[#lines+1] = "\\captionof{table}{" .. escape_latex(caption_text) .. "}"
+    caption_text = caption_text:gsub("^Table%s+%d+:%s*", "")
+    local label = ""
+    if tbl_id ~= "" then
+      label = "\\label{" .. tbl_id .. "}"
+    end
+    lines[#lines+1] = "\\captionof{table}{" .. escape_latex(caption_text) .. "}" .. label
+  elseif tbl_id ~= "" then
+    lines[#lines+1] = "\\label{" .. tbl_id .. "}"
   end
 
   lines[#lines+1] = "\\end{center}"

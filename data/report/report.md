@@ -39,6 +39,8 @@ header-includes: |
   \setlength{\parskip}{2pt plus 1pt minus 1pt}
   \setlength{\parindent}{0pt}
   \pagestyle{plain}
+figPrefix: "Fig."
+tblPrefix: "Table"
 ---
 
 # A Structural Regime Change
@@ -48,14 +50,14 @@ header-includes: |
 Something broke after COVID---and it wasn't just supply chains and sourdough
 habits. When every finisher's time is expressed as a multiple of the winner's
 time ($t_\text{norm}$), the shape of the Vasaloppet field changed abruptly
-between the 2020 and 2022 editions (Fig.\ 1).
+between the 2020 and 2022 editions (@fig:regime).
 
 Look at the percentile lines. The top decile barely budged---the elite kept
 being elite. But the median drifted upward, and the 90th percentile---the
 weekend warriors grinding towards Mora---pulled away like taffy. This is not
 a gentle drift over decades. It is a step function.
 
-Table\ 1 puts numbers on it: the top 10% shifted by +0.07 (noise). The
+@tbl:shifts puts numbers on it: the top 10% shifted by +0.07 (noise). The
 median shifted by +0.30. The 90th percentile by +0.47. The further
 down the field you look, the wider the gap. And here's the twist: elite
 performance actually *improved*. The average winner crossed in 3:45 in
@@ -71,9 +73,9 @@ pack and left the front completely untouched.
 | P75    | 2.32  | 2.75  | +0.43 |
 | P90    | 2.62  | 3.09  | +0.47 |
 
-: Era-average normalised time percentiles. Era 1 = 2011--2020, Era 2 = 2022--2026.
+: Era-average normalised time percentiles. Era 1 = 2011--2020, Era 2 = 2022--2026. {#tbl:shifts}
 
-![Structural regime change in the field distribution of $t_\text{norm}$. Dotted lines show era means for P50 and P90. The tail stretches dramatically after 2020 while the top decile barely moves. Horizontal line: $1.5\times$ medal cut-off.](fig_a_regime_change.png)
+![Structural regime change in the field distribution of $t_\text{norm}$. Dotted lines show era means for P50 and P90. The tail stretches dramatically after 2020 while the top decile barely moves. Horizontal line: $1.5\times$ medal cut-off.](fig_a_regime_change.png){#fig:regime}
 
 ## This is not your imagination
 
@@ -82,10 +84,10 @@ put it to a formal test. For each pair of the 15 race years, we estimated the
 full probability density function of $t_\text{norm}$ using kernel density
 estimation, then measured how much the two curves overlap---the *overlap
 coefficient*, which ranges from 0 (completely different distributions) to 1
-(identical). Fig.\ 2 shows the result as a heatmap.
+(identical). @fig:heatmap shows the result as a heatmap.
 
 The block structure is unmistakable. Within each era, years look alike:
-the average overlap is $0.89 \pm 0.04$ (Table\ 2). Cross the COVID
+the average overlap is $0.89 \pm 0.04$ (@tbl:overlap). Cross the COVID
 gap and the overlap drops to $0.77 \pm 0.07$. The difference is
 not subtle---a Welch's $t$-test gives $t = 10.6$, $p < 10^{-16}$, and
 a permutation test (10,000 resamples) found zero shuffles as extreme as the
@@ -103,9 +105,9 @@ them as such: **Era\ 1** (2011--2020) and **Era\ 2** (2022--2026).
 | Within Era 2 | 10 | 0.876 | 0.037 |
 | Cross-era    | 50 | 0.771 | 0.069 |
 
-: Pairwise density overlap statistics. Within-era years share ~89\% of their distribution; cross-era pairs share only ~77\%.
+: Pairwise density overlap statistics. Within-era years share ~89\% of their distribution; cross-era pairs share only ~77\%. {#tbl:overlap}
 
-![Pairwise overlap of $t_\text{norm}$ density functions. Each cell shows how much two years' finisher distributions agree (1.0 = identical). The block structure reveals two distinct eras separated by the COVID gap. Most similar: 2011 vs 2013 (0.97). Least similar: 2019 vs 2024 (0.61).](fig_f_similarity_heatmap.png)
+![Pairwise overlap of $t_\text{norm}$ density functions. Each cell shows how much two years' finisher distributions agree (1.0 = identical). The block structure reveals two distinct eras separated by the COVID gap. Most similar: 2011 vs 2013 (0.97). Least similar: 2019 vs 2024 (0.61).](fig_f_similarity_heatmap.png){#fig:heatmap}
 
 ## What the DNF data reveals
 
@@ -116,12 +118,12 @@ shows up at the start line.
 
 To tease them apart, we sorted every starter by their time at the Smagan
 checkpoint (11\ km) into speed quartiles, then tracked how each group fared
-over the remaining 79\ km (Fig.\ 3). The results are revealing:
+over the remaining 79\ km (@fig:dnf). The results are revealing:
 
 - **Q1 (fastest quartile):** These are the serious skiers---the ones who
   trained through the summer, own a roller-ski, and have opinions about wax.
-  Their DNF rates are comparable across eras, typically 1--4%, spiking to
-  5--7% only when the weather truly bites. When *these* skiers abandon the
+  Their DNF rates are comparable across eras, typically 2--5%, spiking to
+  7% only when the weather truly bites. When *these* skiers abandon the
   race, you know the conditions were genuinely awful.
 - **Q4 (slowest quartile):** A different universe. DNF rates jumped from 20%
   (Era\ 1) to 38% (Era\ 2). In 2026, a staggering 60% of Q4 starters did
@@ -132,27 +134,15 @@ The Q4/Q1 DNF ratio averaged $7\times$ in Era\ 1 and $17\times$ in Era\ 2. The
 surge in dropouts is overwhelmingly a story about the slowest skiers, not about
 the weather getting worse.
 
-![DNF rate by starter speed quartile (assigned at Smagan, 11\ km). Q1 dropout is the conditions signal. Q4 dropout is overwhelmingly structural---driven by the weakened tail of the post-COVID field.](fig_b_dnf_decomposition.png)
+![DNF rate by starter speed quartile (assigned at Smagan, 11\ km). Q1 dropout is the conditions signal. Q4 dropout is overwhelmingly structural---driven by the weakened tail of the post-COVID field.](fig_b_dnf_decomposition.png){#fig:dnf}
 
 ## Interpretation
 
-The field that lines up in Berga by after COVID is a fundamentally different
+The field that lines up in Berga after COVID is a fundamentally different
 population. The pointy end is intact---arguably sharper than ever. But the
 broad base of the pyramid has softened. The back-of-the-pack skiers are
 slower, more spread out, and far more likely to climb onto a snowmobile at
-Evertsberg.[^presidente]
-
-[^presidente]: One anonymous repeat participant---known to colleagues only as
-  *El Presidente*---has lined up for 11 of these 15 editions. His equipment
-  failure rate across those races is, by any reasonable standard, statistically
-  remarkable---though in fairness, the recent proliferation of the double-pole
-  technique has turned the Vasaloppet track into an increasingly dense forest
-  of swinging carbon fibre. He has never once abandoned the race. Whether his
-  material attrition correlates with our conditions hardness index, the rising
-  pole density per square metre of track, or simply an unusually combative
-  relationship with Swedish birch remains an open research question---but his
-  DNF rate of exactly 0\% across all conditions suggests that stubbornness may
-  be an underappreciated confounding variable.
+Evertsberg.
 
 Why? The data can't say for certain. Disrupted training pipelines, a wave of
 bucket-list newcomers drawn by post-pandemic marketing, an aging participation
@@ -192,9 +182,9 @@ composite hardness score from four components, each standardised as a
 4. **Q1 DNF rate**---the purest conditions signal in the dataset.
    Well-prepared skiers do not quit unless the mountain makes them.
 
-Average the four z-scores and you get a single number (Fig.\ 4). Zero means
+Average the four z-scores and you get a single number (@fig:hardness). Zero means
 average conditions for that era. Positive means harder. Negative means the
-blueberry soup flowed freely and the tracks were fast. Table\ 3 ranks all
+blueberry soup flowed freely and the tracks were fast. @tbl:ranking ranks all
 15 editions.
 
 ## Conditions ranking
@@ -217,9 +207,9 @@ blueberry soup flowed freely and the tracks were fast. Table\ 3 ranks all
 | 2022 | -0.67 | Easiest Era 2 race. |
 | 2012 | -0.75 | Easiest overall. |
 
-: Conditions hardness ranking, all 15 editions sorted from hardest to easiest.
+: Conditions hardness ranking, all 15 editions sorted from hardest to easiest. {#tbl:ranking}
 
-![Conditions hardness score. Each bar is the mean of four within-era z-scores. Positive = harder than average for that era. Dashed line: COVID gap.](fig_c_conditions_hardness.png)
+![Conditions hardness score. Each bar is the mean of four within-era z-scores. Positive = harder than average for that era. Dashed line: COVID gap.](fig_c_conditions_hardness.png){#fig:hardness}
 
 ## The 2026 paradox
 
@@ -244,7 +234,7 @@ actual conditions were not.
 When do skiers quit? In a typical year, roughly 70% of DNFs happen at or
 after Evertsberg (47\ km)---deep in the race, when fatigue and cold have
 had time to accumulate. But in the hardest years and the most structurally
-fragile fields, the dropout curve shifts earlier (Table\ 4). Some skiers
+fragile fields, the dropout curve shifts earlier (@tbl:dropout). Some skiers
 barely make it past the first feed station:
 
 | Year | DNFs < 47 km | Note |
@@ -256,7 +246,7 @@ barely make it past the first feed station:
 | 2026 | 58% | Majority quit early. |
 | 2014 | 61% | Weakest knew immediately. |
 
-: Share of DNFs occurring before Evertsberg (47 km), selected years.
+: Share of DNFs occurring before Evertsberg (47 km), selected years. {#tbl:dropout}
 
 # The Vanishing Medal
 
@@ -275,21 +265,23 @@ you belong.
 | Era 1 (11--20) | 17.3% | 11.5--23.3% |
 | Era 2 (22--26) | 11.2% | 7.3--13.9% |
 
-: Medal yield by era. The threshold is finish within 1.5x winner time.
+: Medal yield by era. The threshold is finish within 1.5x winner time. {#tbl:medal-era}
 
 In Era\ 1, roughly one in six starters earned a medal. In Era\ 2, it is one
-in nine (Table\ 5, Fig.\ 6). The medal rate dropped by 6 percentage
+in nine (@tbl:medal-era, @fig:medal-ts). The medal rate dropped by 6 percentage
 points---not because the medal got harder to earn (the threshold is the same),
 but because the field around it changed. The $1.5\times$ cut-off is a fixed
 line; the field drifted away from it.
 
+![Medal yield over time. The 6pp drop between eras is structural (dashed lines). Year-to-year variation within each era is conditions-driven.](fig_e_medals_timeseries.png){#fig:medal-ts}
+
 ## Conditions explain within-era variation
 
 Within Era\ 1, the correlation between conditions hardness and medal yield is
-remarkably tight: $r = -0.92$ ($p = 0.0002$) (Fig.\ 5). That means conditions
+remarkably tight: $r = -0.92$ ($p = 0.0002$) (@fig:medal-scatter). That means conditions
 alone explain 85% of the year-to-year variation in how many skiers take home
 the medal. Once you know the weather, you can almost perfectly predict the
-medal rate (Table\ 6).
+medal rate (@tbl:era1-extremes).
 
 | Year | Cond. | Medal % | Note |
 |:----:|:-----:|:-------:|:-----|
@@ -299,11 +291,13 @@ medal rate (Table\ 6).
 | 2020 | +0.76 | 12.9% | |
 | 2015 | +1.25 | 11.5% | Hardest, fewest medals. |
 
-: Era 1 extremes: conditions hardness vs medal yield.
+: Era 1 extremes: conditions hardness vs medal yield. {#tbl:era1-extremes}
 
 Era\ 2 shows the same direction ($r = -0.64$) but with only five data points
 the correlation is not statistically significant ($p = 0.24$). Give it a few
 more years and it likely will be.
+
+![Conditions hardness vs medal yield. Within Era\ 1, conditions explain 85% of medal variance ($r = -0.92$). The two eras occupy distinct bands.](fig_d_medals_scatter.png){#fig:medal-scatter}
 
 ## The double penalty in 2024
 
@@ -316,22 +310,6 @@ If you picked the worst possible year to chase a medal, it was 2024: only
    4 percentage points off the already-depressed baseline.
 
 Structure set the floor. Conditions kicked it out from under you.
-
-## 2026: survivorship bias inflates medals
-
-And then there is 2026, which---despite posting the highest DNF rate in our
-dataset---produced a medal rate of 13.9%, comfortably *above* the Era\ 2
-average. How?
-
-The 22% who dropped out were disproportionately from the slow tail. Strip them
-away and the remaining finisher pool skews fast: 17.7% of *finishers* cleared
-the $1.5\times$ threshold. The survivors were, in effect, pre-selected for
-speed. The race didn't get easier; the people who would have dragged the
-average down simply weren't there at the finish line.
-
-![Conditions hardness vs medal yield. Within Era\ 1, conditions explain 85% of medal variance ($r = -0.92$). The two eras occupy distinct bands.](fig_d_medals_scatter.png)
-
-![Medal yield over time. The 6pp drop between eras is structural (dashed lines). Year-to-year variation within each era is conditions-driven.](fig_e_medals_timeseries.png)
 
 # Summary
 
@@ -368,3 +346,12 @@ because the DNF rate was high, ask them: hard for *whom*?
 *Data: 238,492 results from vasaloppet.se, 2011--2026 (15 editions, excluding
 2021 COVID elite-only, 325 participants). Checkpoint times: Smagan (11\ km)
 through Eldris (81\ km).*
+
+\bigskip
+
+**Acknowledgment.** One anonymous repeat participant---known to colleagues only
+as *El Presidente*---has lined up for 11 of these 15 editions. His equipment
+failure rate across those races is, by any reasonable standard, statistically
+remarkable. He has never once abandoned the race. His DNF rate of exactly 0\%
+across all conditions suggests that stubbornness may be an underappreciated
+confounding variable.
