@@ -65,6 +65,15 @@ Era\ 2 versus 4:07 in Era\ 1. The fast skiers got faster. The slow skiers
 got much, much slower. Whatever happened during COVID hit the back of the
 pack and left the front completely untouched.
 
+One caveat on the metric itself: because $t_\text{norm}$ divides by the
+winner's time, it is sensitive to what happens at the very front of the race.
+When the elite group has a slow day---heavy tracks, tactical racing---the
+denominator rises and the entire distribution compresses. A fast winner does
+the opposite. This means year-to-year swings in $t_\text{norm}$ percentiles
+reflect not just how the field performed, but how the winner raced. The era
+averages in @tbl:shifts smooth out most of this noise, but in individual
+years the effect can be substantial. We return to it when it matters most.
+
 | Pctile | Era 1 | Era 2 | Shift |
 |:------:|:-----:|:-----:|:-----:|
 | P10    | 1.37  | 1.43  | +0.07 |
@@ -225,9 +234,18 @@ fast---P25 and P50 of $t_\text{norm}$ actually come in *below* the Era\ 2
 average. This is textbook **survivorship bias**: the race looks easy if you
 only count the people who made it.
 
-In short, 2026 was a *moderately hard* race that collided with a field
-carrying an unusually fragile tail. The headline DNF number is dramatic; the
-actual conditions were not.
+But survivorship is only half the story. The 2026 winner crossed in 4:15
+(15,285\ s)---the slowest winning time in Era\ 2 and +1.6 standard deviations
+above the era mean. Heavy tracks and a tactical elite race inflated the
+denominator of $t_\text{norm}$, mechanically compressing every percentile
+downward. This is the **denominator effect** described at the outset. The
+recreational skiers didn't perform better relative to each other; the ruler
+we measured them with was more generous.
+
+In short, two forces conspire to make 2026 *look* easy on the $t_\text{norm}$
+scale: survivorship trims the slow tail, and a slow winner shrinks the ratio.
+The headline DNF number is dramatic; the actual conditions were moderate; and
+the flattering percentiles are an artifact of both effects combined.
 
 ## Checkpoint dropout patterns
 
@@ -299,17 +317,24 @@ more years and it likely will be.
 
 ![Conditions hardness vs medal yield. Within Era\ 1, conditions explain 85% of medal variance ($r = -0.92$). The two eras occupy distinct bands.](fig_d_medals_scatter.png){#fig:medal-scatter}
 
-## The double penalty in 2024
+## Two extremes: 2024 and 2026
 
-If you picked the worst possible year to chase a medal, it was 2024: only
-7.3% of starters earned one. Two forces conspired:
+The medal threshold is anchored to the winner's time, which means conditions
+cut both ways. In a hard race the field slows down, but so does the winner,
+and the $1.5\times$ cut-off rises with them. In an easy race the opposite
+happens. Structure and conditions can therefore conspire---or cancel.
 
-1. **Structural:** the Era\ 2 baseline is already lower (~11%), because the
-   field is slower relative to the winner.
-2. **Conditions:** 2024 was the hardest Era\ 2 race (+0.93), shaving another
-   4 percentage points off the already-depressed baseline.
+**2024** is the worst-case conspiracy. The Era\ 2 structural baseline is
+already lower (~11%), and 2024 was the hardest Era\ 2 race (+0.93). A fast
+winner (3:53) pulled the threshold *down* to 5:49 while the weakened field
+struggled *up*. Only 7.3% of starters earned a medal---the lowest in our
+dataset. Structure set the floor; conditions kicked it out from under you.
 
-Structure set the floor. Conditions kicked it out from under you.
+**2026** is the opposite. The slowest Era\ 2 winner (4:15, +1.6$\sigma$)
+pushed the threshold *up* to 6:22---over an hour more generous than 2025's
+5:13. Conditions that punished the field also punished the winner, and the
+threshold floated up with the difficulty. Result: 13.9%, the highest medal
+rate in Era\ 2, despite the highest DNF.
 
 # Summary
 
